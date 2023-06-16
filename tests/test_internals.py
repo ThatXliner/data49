@@ -7,18 +7,18 @@ from data49 import internal
 
 def test_insane_typo():
     @internal.add_typo_safety
-    class e(types.SimpleNamespace):
+    class E(types.SimpleNamespace):
         pass
 
-    my_stuff = e(banana="BBB", boar="boring")
+    my_stuff = E(banana="BBB", boar="boring")
     with pytest.raises(AttributeError):
-        my_stuff.freshavacdo
+        _ = my_stuff.freshavacdo
 
 
 def test_cannot_add_typo_safety():
     with pytest.raises(TypeError, match="already implements '__getattr__'"):
 
         @internal.add_typo_safety
-        class e:
+        class E:
             def __getattr__(self, name):
                 pass

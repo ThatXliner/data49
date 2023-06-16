@@ -13,7 +13,7 @@
 
 > A gold rush-themed data mining library
 
-WIP
+WIP. Expect frequent breaking changes
 
 <!-- It is split into the following sections:
 

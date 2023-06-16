@@ -29,13 +29,17 @@ __all__ = [
     "expected_conditions",
     "get",
     "post",
-    "Soup",  # TODO: Better name
+    "to_soup",  # TODO(ThatXliner): Better name
+    "Soup",  # TODO(ThatXliner): Better name
 ]
 
 
-def Soup(html: str, **kwargs) -> BeautifulSoup:
+def to_soup(html: str, **kwargs) -> BeautifulSoup:
     """Convert a string to a BeautifulSoup object."""
     return BeautifulSoup(html, features="html.parser", **kwargs)
+
+
+Soup = to_soup
 
 
 class BrowserType(enum.Enum):
@@ -50,9 +54,46 @@ class BrowserType(enum.Enum):
 
 
 __get_browser_cache: Dict[
-    Tuple[Tuple[BrowserType, ...], bool, Optional[Tuple[str, ...]]],
+    Tuple[Tuple[str, ...], bool, Optional[Tuple[str, ...]]],
     Optional[RawWebDriver],
 ] = {}
+
+
+def _try_to_get(
+    browser_name: BrowserType,
+    headless: bool,
+    arguments: Optional[Sequence[str]],
+) -> Optional[RawWebDriver]:
+    try:
+        # TODO(ThatXliner): Import directly from selenium.webdriver
+        options = importlib.import_module(
+            ".options",
+            f"selenium.webdriver.{browser_name.value['name'].lower()}",
+        ).Options()
+        if headless:
+            try:
+                browser_name.value["make_headless"](options)
+            except TypeError:
+                return None
+        if arguments:
+            for arg in arguments:
+                options.add_argument(arg)
+        service = importlib.import_module(
+            ".service",
+            f"selenium.webdriver.{browser_name.value['name'].lower()}",
+        ).Service(log_path=os.devnull)
+        browser = functools.partial(
+            getattr(drivers, browser_name.value["name"]),
+            options=options,
+            service=service,
+        )
+        # There is no better way to check validity
+        # than to open and close it...
+        browser().close()
+    except browser_exceptions.WebDriverException:
+        return None
+    else:
+        return browser
 
 
 def get_browser(
@@ -73,51 +114,18 @@ def get_browser(
     if _cache_key in __get_browser_cache:
         output = __get_browser_cache[_cache_key]
         if output is None:
-            raise RuntimeError("Could not find any browser that supports your needs")
+            msg = "Could not find any browser that supports your needs"
+            raise RuntimeError(msg)
         return output
-    #   if output is None:
-    #   pass
-
-    def _(browser_name: BrowserType) -> Optional[RawWebDriver]:
-        try:
-            # TODO: Import directly from selenium.webdriver
-            options = importlib.import_module(
-                ".options",
-                f"selenium.webdriver.{browser_name.value['name'].lower()}",
-            ).Options()
-            if headless:
-                try:
-                    browser_name.value["make_headless"](options)
-                except TypeError:
-                    return None
-            if arguments:
-                for arg in arguments:
-                    options.add_argument(arg)
-            service = importlib.import_module(
-                ".service",
-                f"selenium.webdriver.{browser_name.value['name'].lower()}",
-            ).Service(log_path=os.devnull)
-            browser = functools.partial(
-                getattr(drivers, browser_name.value["name"]),
-                options=options,
-                service=service,
-            )
-            # There is no better way to check validity
-            # than to open and close it...
-            browser().close()
-        except browser_exceptions.WebDriverException:
-            return None
-        else:
-            return browser
-
     for browser in priority:
-        found = _(browser)
+        found = _try_to_get(browser, headless, arguments)
         if found is not None:
             __get_browser_cache[_cache_key] = found
             return found
     __get_browser_cache[_cache_key] = None
-    # TODO: Download geckodriver/chromedriver and use it
-    raise RuntimeError("Could not find any browser that supports your needs")
+    # TODO(ThatXliner): Download geckodriver/chromedriver and use it
+    msg = "Could not find any browser that supports your needs"
+    raise RuntimeError(msg)
 
 
 @internal.add_typo_safety
@@ -125,17 +133,17 @@ def get_browser(
 class Element:
     """Represents a DOM element.
 
-    Should not be instantiated directly but instead with methods like :meth:`BrowserContext.query_selector`
+    Should not be instantiated directly but instead
+    with methods like :meth:`BrowserContext.query_selector`
     """
 
     webelement: webelement.WebElement
 
     def soup(self) -> BeautifulSoup:
         """Convert the element into a BeautifulSoup object."""
-        return Soup(self["innerHTML"])
+        return to_soup(self["innerHTML"])
 
-    @property
-    @functools.lru_cache
+    @functools.cached_property
     def name(self) -> str:
         """Name of the element. (e.g. 'a' or 'div')."""
         return self.webelement.tag_name
@@ -144,9 +152,9 @@ class Element:
     # @functools.lru_cache()
     def get(self, attr: str) -> Optional[str]:
         """Get the IDL attribute of this element (e.g. `innerHTML`, `value`)."""
-        return self.webelement.get_attribute(attr)  # type: ignore
+        return self.webelement.get_attribute(attr)
 
-    # TODO: Use soup and cache soup
+    # TODO(ThatXliner): Use soup and cache soup
     # To avoid selenium.common.exceptions.StaleElementReferenceException
     def __getitem__(self, attr: str) -> str:
         """Like :meth:`get` but doesn't return None."""
@@ -157,11 +165,13 @@ class Element:
 
     def click(self) -> None:
         """Simulate a user click on this element."""
-        self.webelement.click()  # type: ignore
+        self.webelement.click()
 
-    def type(self, keys: str) -> None:
-        """Simulate a user typing stuff on this element. Examples include filling out a form or text input."""
-        self.webelement.send_keys(keys)  # type: ignore
+    def type(self, keys: str) -> None:  # noqa: A003
+        """Simulate a user typing stuff on this element.
+
+        Examples include filling out a form or text input."""
+        self.webelement.send_keys(keys)
 
 
 @internal.add_typo_safety
@@ -189,7 +199,7 @@ class BrowserContext:
         .. note::
 
             If the element you want to find isn't readily available, you can use
-            :meth:`wait` instead (or :meth:`css`, which combines this with :meth:`wait`).
+            :meth:`wait` instead (or :meth:`css`, which combines this with :meth:`wait`)
 
         Args:
             css_selector (str): The CSS selector to match
@@ -225,13 +235,11 @@ class BrowserContext:
              :meth:`wait`
         """
         return self.wait(
-            expected_conditions.presence_of_element_located(  # type: ignore
+            expected_conditions.presence_of_element_located(
                 (By.CSS_SELECTOR, css_selector),
             ),
             wait_up_to,
         )
-
-    # TODO: css_all
 
     def query_selector_all(self, css_selector: str) -> List[Element]:
         """:meth:`query_selector` for multiple elements."""
@@ -283,9 +291,8 @@ class BrowserContext:
         try:
             return Element(self._get_wait_up_to(up_to).until(until))
         except browser_exceptions.TimeoutException as error:
-            raise TimeoutError(
-                f"Could not find element under {up_to} seconds",
-            ) from error
+            msg = f"Could not find element under {up_to} seconds"
+            raise TimeoutError(msg) from error
 
     # def wait_until  # Recieves a function that returns boolean as parameter. Polls.
 
@@ -294,21 +301,29 @@ class BrowserContext:
 @dataclass
 class Browser(contextlib.AbstractContextManager):
     """>>> with Browser("https://google.com"): pass
-    >>> with Browser("https://google.com", driver=get_browser(priority=(BrowserType.FIREFOX,))):
+    >>> with Browser(
+    ...     "https://google.com",
+    ...     get_driver=get_browser(priority=(BrowserType.FIREFOX,)),
+    ... ):
     ...     pass
     >>> from selenium import webdriver
     >>> from selenium.webdriver.firefox.options import Options
-    >>> with Browser("https://google.com", driver=lambda: webdriver.Firefox(options=Options)):
+    >>> with Browser(
+    ...     "https://google.com",
+    ...     get_driver=lambda: webdriver.Firefox(options=Options),
+    ... ):
     ...     pass
-    >>> with Browser("https://google.com", driver=webdriver.Ie): pass.
+    >>> with Browser("https://google.com", get_driver=webdriver.Ie): pass.
     """
 
     url: str
-    driver: Callable[[], RawWebDriver] = field(default_factory=get_browser)
+    get_driver: Callable[[], RawWebDriver] = field(default=get_browser)
 
-    def open(self) -> BrowserContext:
+    def open(self) -> BrowserContext:  # noqa: A003
         """Start the browser."""
-        self.driver = self.driver()  # XXX: Don't make Browsers one-time
+        self.driver = (
+            self.get_driver()
+        )  # TODO(ThatXliner): Don't make Browsers one-time
         tries = 42  # Arbitrary number of tries
         while tries > 0:
             try:
@@ -318,7 +333,8 @@ class Browser(contextlib.AbstractContextManager):
                 tries -= 1
                 continue
         if tries == 0:
-            raise RuntimeError("Could not load URL")
+            msg = "Could not load URL"
+            raise RuntimeError(msg)
         return BrowserContext(self.url, self.driver)
 
     def close(self) -> None:
@@ -328,5 +344,5 @@ class Browser(contextlib.AbstractContextManager):
     def __enter__(self) -> BrowserContext:
         return self.open()
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, *_):
         self.close()

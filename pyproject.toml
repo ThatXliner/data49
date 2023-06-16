@@ -39,10 +39,12 @@ shed = "^0.10.9"
 
 Sphinx = "^6.1.3"
 toml = "^0.10.2"
+types-beautifulsoup4 = "^4.12.0.5"
+types-requests = "^2.31.0.1"
 
 [tool.poe.tasks]
 # Code linting
-mypy   = {cmd = "mypy data49 --strict", help = "Run MyPy on codebase"}
+mypy   = {cmd = "mypy data49", help = "Run MyPy on codebase"}
 ruff = {cmd = "ruff check data49", help = "Run Ruff on codebase"}
 check_black = {cmd = "black data49 --check"}
 check_imports = {cmd = "ruff check data49 --select I"}
@@ -82,14 +84,16 @@ build-backend = "poetry.core.masonry.api"
 line-length = 88
 select = ["ALL"]
 ignore = [
-    # "D",    # "No docs"
+    "D",    # "No docs"
     "T20",  # "Don't use print or pprint"
-    # "ANN",  # Type annotation errors (or the lack of it)
+    "ANN",  # Type annotation errors (or the lack of it)
     "FBT",  # I actually don't know why this exists
             # and it seems useless so ignore it
+    "TD003",
+    "FIX002",
     # Fix doc rule conflicts
     "D203",
-    "D213"
+    "D213",
 ]
 target-version = "py38"
 [tool.ruff.per-file-ignores]

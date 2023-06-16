@@ -95,7 +95,8 @@ class Sluice:
                 else concurrent.futures.ProcessPoolExecutor
             )
             if self.chain:
-                raise ValueError("Can only chain synchronously for now")
+                msg = "Can only chain synchronously for now"
+                raise ValueError(msg)
             with worker_type(max_workers=self.max_workers) as executor:
                 for item in self.pipeline:
                     if isinstance(item, tuple):

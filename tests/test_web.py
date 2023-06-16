@@ -7,7 +7,7 @@ def test_request():
 
 class TestHeadless:
     def test_browser(self):
-        with web.Browser("https://google.com") as browser:
+        with web.Browser("https://google.com") as _:
             pass
 
     def test_browser_alternate(self):
@@ -19,11 +19,15 @@ class TestHeadless:
 class TestNoHeadless:
     def test_browser(self):
         with web.Browser(
-            "https://google.com", driver=web.get_browser(headless=False)
+            "https://google.com",
+            get_driver=web.get_browser(headless=False),
         ) as _:
             pass
 
     def test_browser_alternate(self):
-        b = web.Browser("https://google.com", driver=web.get_browser(headless=False))
+        b = web.Browser(
+            "https://google.com",
+            get_driver=web.get_browser(headless=False),
+        )
         b.open()
         b.close()
