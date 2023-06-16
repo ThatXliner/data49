@@ -317,7 +317,7 @@ class Browser(contextlib.AbstractContextManager):
     """
 
     url: str
-    get_driver: Callable[[], RawWebDriver] = field(default=get_browser)
+    get_driver: Callable[[], RawWebDriver] = field(default_factory=get_browser)
 
     def open(self) -> BrowserContext:  # noqa: A003
         """Start the browser."""
