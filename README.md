@@ -91,6 +91,8 @@ Every returned driver must report `acceptInsecureCerts=False`. Data49 disables p
 
 The automatic path currently supports Chrome only. The verified Manager supports macOS ARM64 and x86-64, Linux ARM64 and x86-64, and Windows x86-64. Browser behavior was exercised on macOS ARM64; CI runs the same browser probe on its desktop runner platforms. A missing helper, older browser, unsupported engine, or unavailable certificate interface fails closed. Only window size, language, headless mode, and `--start-maximized` are accepted as additional browser arguments.
 
+On Linux, Chrome for Testing also requires a working browser sandbox. Ubuntu's AppArmor rules can prevent a downloaded browser from creating user namespaces. Follow [Chromium's supported sandbox setup](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md), which includes using an installed Chrome setuid sandbox through `CHROME_DEVEL_SANDBOX`. Data49 does not disable the sandbox.
+
 To reproduce the certificate checks against both compromised chains and example.com:
 
 ```sh
