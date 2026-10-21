@@ -15,7 +15,7 @@ from selenium.webdriver.remote import webdriver, webelement
 from selenium.webdriver.support import expected_conditions  # As for API
 from selenium.webdriver.support.ui import WebDriverWait  # type: ignore[attr-defined]
 
-from . import internal
+from . import _driver_manager, internal
 
 RawWebDriver = webdriver.WebDriver
 __all__ = [
@@ -78,10 +78,18 @@ def _try_to_get(
         if arguments:
             for arg in arguments:
                 options.add_argument(arg)
+        service_arguments = {"log_path": os.devnull}
+        if browser_name is not BrowserType.SAFARI:
+            paths = _driver_manager.driver_paths(
+                browser_name.value["name"].lower(), options.binary_location
+            )
+            service_arguments["executable_path"] = paths["driver_path"]
+            if paths.get("browser_path"):
+                options.binary_location = paths["browser_path"]
         service = importlib.import_module(
             ".service",
             f"selenium.webdriver.{browser_name.value['name'].lower()}",
-        ).Service(log_path=os.devnull)
+        ).Service(**service_arguments)
         browser = functools.partial(
             getattr(drivers, browser_name.value["name"]),
             options=options,

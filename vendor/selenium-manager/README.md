@@ -18,3 +18,5 @@ python tools/verify_selenium_manager_tls.py selenium-source/rust/target/release/
 On Windows the executable has an `.exe` suffix. Native Windows and Intel macOS builds are produced and tested by `.github/workflows/selenium-manager.yml`; ARM macOS and Linux builds have separate build evidence in `manifest.json`. The manifest records the SHA-256 of each bundled executable. Upstream LICENSE and NOTICE are included here.
 
 The verification script exercises the actual native browser-driver downloader. It requires certificate errors for both eMudhra incident test chains and a verified HTTPS response from example.com. The control response is HTML, so driver metadata parsing fails after TLS succeeds; no downloaded test content is executed.
+
+`security.patch` is the patch used by the GitHub matrix. `security-native.patch` records the equivalent local native-build patch; the differences are import placement and formatting. The manifest names the exact patch for each executable.

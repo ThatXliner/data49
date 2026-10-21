@@ -2,12 +2,6 @@ name: Verified Selenium Manager
 
 on:
   workflow_dispatch:
-  push:
-    branches: [security/verified-selenium-manager]
-    paths:
-      - 'vendor/selenium-manager/**'
-      - 'tools/verify_selenium_manager_tls.py'
-      - '.github/workflows/selenium-manager.yml'
 
 permissions:
   contents: read

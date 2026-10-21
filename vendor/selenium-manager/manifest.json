@@ -1,0 +1,65 @@
+{
+  "upstream_repository": "https://github.com/SeleniumHQ/selenium.git",
+  "upstream_commit": "35c5fab4a58fa5878edb255eb7747b04ca51a015",
+  "upstream_tag": "selenium-4.51.0",
+  "dependencies": {
+    "reqwest": "0.13.5 (direct); 0.12.28 (transitive apple-flat-package)",
+    "rustls-webpki": "0.103.16",
+    "webpki-roots": "1.0.10",
+    "webpki-root-certs": "1.0.10 (WASM-only dependency in lockfile; inactive in native binaries)"
+  },
+  "ca_contract": {
+    "required_child_env": "SSL_CERT_FILE=certifi.where()",
+    "parser": "reqwest::Certificate::from_pem_bundle",
+    "trust_roots": "ClientBuilder.tls_certs_only disables ALL native/built-in fallback for configured bundles",
+    "fail_closed": "read, PEM, empty bundle and build errors propagate; no unwrap_or_default",
+    "verification_bypass_removed": true,
+    "tested_certifi_bundle_sha256": "f356a97fb33148de963979b5b164c0b8de13c5bfe0ffe913ef68208d6364a419"
+  },
+  "artifacts": [
+    {
+      "platform": "darwin-arm64",
+      "path": "data49/_selenium/darwin-arm64/selenium-manager",
+      "sha256": "5406f5320be3648812d802c566f1e0b220b66667942da12847d85aad196a271a",
+      "source_patch": "vendor/selenium-manager/security-native.patch",
+      "proof": "vendor/selenium-manager/proofs/darwin-arm64.json",
+      "target": "aarch64-apple-darwin"
+    },
+    {
+      "platform": "linux-arm64",
+      "path": "data49/_selenium/linux-arm64/selenium-manager",
+      "sha256": "53a5bcc1e77bb8bb2f6fb5a7cc66239c8bc306477c454fefaaf7c2b654536efe",
+      "source_patch": "vendor/selenium-manager/security-native.patch",
+      "proof": "vendor/selenium-manager/proofs/linux-arm64.json",
+      "target": "aarch64-unknown-linux-musl"
+    },
+    {
+      "platform": "linux-x86_64",
+      "path": "data49/_selenium/linux-x86_64/selenium-manager",
+      "sha256": "adeb7b5b9542cbb33c3737eb652d7fc1d6cf3490eeb6d41f213425324b023c25",
+      "source_patch": "vendor/selenium-manager/security-native.patch",
+      "proof": "vendor/selenium-manager/proofs/linux-x86_64.json",
+      "target": "x86_64-unknown-linux-musl"
+    },
+    {
+      "platform": "darwin-x86_64",
+      "path": "data49/_selenium/darwin-x86_64/selenium-manager",
+      "sha256": "680aa831d69f31b1ccab7616df764241a0f124a8f0d553fb366774641329ae37",
+      "source_patch": "vendor/selenium-manager/security.patch",
+      "proof": "vendor/selenium-manager/proofs/darwin-x86_64.json",
+      "build_workflow": "https://github.com/ThatXliner/data49/actions/runs/39612474454"
+    },
+    {
+      "platform": "win32-x86_64",
+      "path": "data49/_selenium/win32-x86_64/selenium-manager.exe",
+      "sha256": "8471ee3a2e4e593c1ee823bb4602af05c39d298f695c801a9da94a00ba9b94f8",
+      "source_patch": "vendor/selenium-manager/security.patch",
+      "proof": "vendor/selenium-manager/proofs/win32-x86_64.json",
+      "build_workflow": "https://github.com/ThatXliner/data49/actions/runs/39612474454"
+    }
+  ],
+  "patch_sha256": {
+    "security.patch": "6e15fc21bed11b305ade283255d0d4dcd46212f24512c837c8c679327594cbfe",
+    "security-native.patch": "efcee57d0abd74af044408a6e981aca1486a2b25d0da03826e25551c6d8772a0"
+  }
+}

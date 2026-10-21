@@ -1,0 +1,99 @@
+diff --git a/rust/Cargo.lock b/rust/Cargo.lock
+index 0d33d1f..dfade06 100644
+--- a/rust/Cargo.lock
++++ b/rust/Cargo.lock
+@@ -1889,9 +1889,9 @@ checksum = "eec689c0bc40ff2458a5977b6619cb718087084a18e02a131c599b62d05e1a5f"
+ 
+ [[package]]
+ name = "rustls-webpki"
+-version = "0.103.15"
++version = "0.103.16"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "f3c3cf1d8b1e7d4927e2d154c3fcb02979afb9939629c62cd9048d4f07b60ac2"
++checksum = "4443b1b6d39d7c663139942cc4558262562d2c84123bb6282ef177009ca8b281"
+ dependencies = [
+  "ring",
+  "rustls-pki-types",
+@@ -2701,18 +2701,18 @@ dependencies = [
+ 
+ [[package]]
+ name = "webpki-root-certs"
+-version = "1.0.9"
++version = "1.0.10"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "b96554aa2acc8ccdb7e1c9a58a7a68dd5d13bccc69cd124cb09406db612a1c9b"
++checksum = "58ec80e73fd8baf57bf0d9615554c75348bda990d6d5bbeab964dd068319fecb"
+ dependencies = [
+  "rustls-pki-types",
+ ]
+ 
+ [[package]]
+ name = "webpki-roots"
+-version = "1.0.9"
++version = "1.0.10"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "7dcd9d09a39985f5344844e66b0c530a33843579125f23e21e9f0f220850f22a"
++checksum = "1c1c8e20c8a38fc7d65abfe74eb7280e4aa667e8eec8bc84996d2874810748d9"
+ dependencies = [
+  "rustls-pki-types",
+ ]
+diff --git a/rust/Cargo.toml b/rust/Cargo.toml
+index 2582d55..7e18514 100644
+--- a/rust/Cargo.toml
++++ b/rust/Cargo.toml
+@@ -19,7 +19,7 @@ env_logger = "0.11.10"
+ regex = "1.12.3"
+ tokio = { version = "1.52.3", default-features = false, features = ["macros", "net", "rt-multi-thread"] }
+ tempfile = "3.27.0"
+-reqwest = { version = "0.13.3", default-features = false, features = ["rustls-no-provider"] }
++reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider"] }
+ # Pin the ring crypto backend so aws-lc-sys (and its C build requirements) are
+ # never compiled. The ring provider must be installed at process startup; see
+ # main.rs. rustls-platform-verifier (pulled in by reqwest) is crypto-agnostic
+diff --git a/rust/src/lib.rs b/rust/src/lib.rs
+index c8862b5..51d753c 100644
+--- a/rust/src/lib.rs
++++ b/rust/src/lib.rs
+@@ -41,8 +41,8 @@ use crate::safari::{SAFARI_NAME, SAFARIDRIVER_NAME, SafariManager};
+ use crate::safaritp::{SAFARITP_NAMES, SafariTPManager};
+ use crate::shell::{Command, run_shell_command, run_shell_command_with_log};
+ use crate::stats::{Props, send_stats_to_plausible};
+-use anyhow::Error;
+ use anyhow::anyhow;
++use anyhow::{Context, Error};
+ use fs_extra::file;
+ use fs_extra::file::CopyOptions;
+ use reqwest::{Client, Proxy};
+@@ -1848,13 +1848,28 @@ pub fn create_http_client(timeout: u64, proxy: &str) -> Result<Client, Error> {
+     // Ensure the ring provider is installed. Returns Err if already set, which
+     // is fine — we just need it present before ClientBuilder::build() runs.
+     let _ = rustls::crypto::ring::default_provider().install_default();
+-    let mut client_builder = Client::builder()
+-        .danger_accept_invalid_certs(true)
+-        .timeout(Duration::from_secs(timeout));
++    let mut client_builder = Client::builder().timeout(Duration::from_secs(timeout));
++    if let Some(path) = env::var_os("SSL_CERT_FILE") {
++        let pem = fs::read(&path).with_context(|| {
++            format!(
++                "Unable to read SSL_CERT_FILE: {}",
++                Path::new(&path).display()
++            )
++        })?;
++        let certs = reqwest::Certificate::from_pem_bundle(&pem)
++            .context("Invalid SSL_CERT_FILE PEM bundle")?;
++        if certs.is_empty() {
++            return Err(anyhow!("SSL_CERT_FILE contains no certificates"));
++        }
++        // Explicit bundles replace all native and built-in trust roots.
++        client_builder = client_builder.tls_certs_only(certs);
++    }
+     if !proxy.is_empty() {
+         client_builder = client_builder.proxy(Proxy::all(proxy)?);
+     }
+-    Ok(client_builder.build().unwrap_or_default())
++    Ok(client_builder
++        .build()
++        .context("Unable to build verified HTTP client")?)
+ }
+ 
+ #[cfg(test)]
