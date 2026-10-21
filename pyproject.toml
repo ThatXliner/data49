@@ -21,6 +21,7 @@ homepage = "https://github.com/ThatXliner/data49"
 # keywords = ["awesome", "project"]  # Maximum of 5 keywords
 
 [tool.poetry.dependencies]
+certifi = ">=2026.10.19"
 python = "^3.10"
 thefuzz = {extras = ["speedups"], version = "^0.19.0"}
 beautifulsoup4 = "^4.12.2"
