@@ -1,0 +1,60 @@
+name: Verified Selenium Manager
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [security/verified-selenium-manager]
+    paths:
+      - 'vendor/selenium-manager/**'
+      - 'tools/verify_selenium_manager_tls.py'
+      - '.github/workflows/selenium-manager.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            platform: darwin-x86_64
+            executable: selenium-manager
+          - os: windows-latest
+            platform: win32-x86_64
+            executable: selenium-manager.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: 2
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: SeleniumHQ/selenium
+          ref: 35c5fab4a58fa5878edb255eb7747b04ca51a015
+          path: selenium-source
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install current CA bundle
+        run: python -m pip install 'certifi==2026.10.19'
+      - name: Apply security patch
+        run: git -C selenium-source apply ../vendor/selenium-manager/security.patch
+      - name: Build locked native downloader
+        run: cargo build --manifest-path selenium-source/rust/Cargo.toml --release --locked
+      - name: Verify native HTTPS downloader
+        run: python tools/verify_selenium_manager_tls.py selenium-source/rust/target/release/${{ matrix.executable }} --output verification
+      - name: Preserve verified executable and TLS evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-manager-${{ matrix.platform }}
+          path: |
+            selenium-source/rust/target/release/${{ matrix.executable }}
+            verification/
