@@ -6,10 +6,13 @@ on:
   push:
   pull_request:
 env:
-  POETRY_VERSION: 1.5.1
+  POETRY_VERSION: 1.8.5
 jobs:
   test:
+    env:
+      DATA49_LIVE_BROWSER_TESTS: "1"
     strategy:
+      max-parallel: 2
       matrix:
         python-version:
           - "3.10"
@@ -44,10 +47,17 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install
           poetry install  # Second time to install the project
-      - name: Install ChromeDriver
-        uses: nanasess/setup-chromedriver@v2
       - name: Run test suite
         run: poe ci
+      - name: Verify actual browser certificate rejection
+        if: matrix.python-version == '3.10'
+        run: poetry run python tools/verify_browser_tls.py --fresh-cache --output browser-tls.json
+      - name: Save browser TLS evidence
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-tls-${{ runner.os }}
+          path: browser-tls*
       - name: Upload to CodeCov
         uses: codecov/codecov-action@v2
   docs:

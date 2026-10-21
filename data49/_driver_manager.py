@@ -33,7 +33,13 @@ def _manager_binary() -> Path:
     return binary
 
 
-def driver_paths(browser: str, browser_path: str = "") -> Dict[str, str]:
+def driver_paths(
+    browser: str,
+    browser_path: str = "",
+    *,
+    browser_version: str = "",
+    force_browser_download: bool = False,
+) -> Dict[str, str]:
     """Find/download a driver without running Selenium's unverified downloader."""
     args = [
         str(_manager_binary()),
@@ -49,6 +55,10 @@ def driver_paths(browser: str, browser_path: str = "") -> Dict[str, str]:
     ]
     if browser_path:
         args += ["--browser-path", browser_path]
+    if browser_version:
+        args += ["--browser-version", browser_version]
+    if force_browser_download:
+        args.append("--force-browser-download")
     environment = os.environ.copy()
     environment["SSL_CERT_FILE"] = certifi.where()
     completed = subprocess.run(

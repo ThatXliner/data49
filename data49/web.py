@@ -1,7 +1,6 @@
 import contextlib
 import enum
 import functools
-import importlib
 import os
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
@@ -15,7 +14,7 @@ from selenium.webdriver.remote import webdriver, webelement
 from selenium.webdriver.support import expected_conditions  # As for API
 from selenium.webdriver.support.ui import WebDriverWait  # type: ignore[attr-defined]
 
-from . import _driver_manager, internal
+from . import _browser_security, _driver_manager, internal
 
 RawWebDriver = webdriver.WebDriver
 __all__ = [
@@ -31,7 +30,10 @@ __all__ = [
     "post",
     "to_soup",  # TODO(ThatXliner): Better name
     "Soup",  # TODO(ThatXliner): Better name
+    "BrowserSecurityError",
 ]
+
+BrowserSecurityError = _browser_security.BrowserSecurityError
 
 
 def to_soup(html: str, **kwargs) -> BeautifulSoup:
@@ -55,65 +57,104 @@ class BrowserType(enum.Enum):
 
 __get_browser_cache: Dict[
     Tuple[Tuple[str, ...], bool, Optional[Tuple[str, ...]]],
-    Optional[RawWebDriver],
+    Optional[Callable[[], RawWebDriver]],
 ] = {}
+
+
+def _start_verified_browser(*, options, service):
+    _browser_security.require_safe_arguments(options.arguments)
+    if options.capabilities.get("acceptInsecureCerts") is not False:
+        msg = "Browser TLS certificate validation must be enabled"
+        raise BrowserSecurityError(msg)
+    prefs = options.experimental_options.get("prefs")
+    if (
+        not isinstance(prefs, dict)
+        or prefs.get(_browser_security.PLATFORM_TRUST_PREF) is not False
+    ):
+        msg = "Browser platform trust integration must be disabled"
+        raise BrowserSecurityError(msg)
+    browser = drivers.Chrome(options=options, service=service)
+    try:
+        _browser_security.require_safe_chrome(browser)
+    except browser_exceptions.WebDriverException as error:
+        browser.quit()
+        msg = "Browser trust inspection failed or is unsupported"
+        raise BrowserSecurityError(msg) from error
+    except Exception:
+        browser.quit()
+        raise
+    return browser
 
 
 def _try_to_get(
     browser_name: BrowserType,
     headless: bool,
     arguments: Optional[Sequence[str]],
-) -> Optional[RawWebDriver]:
+) -> Optional[Callable[[], RawWebDriver]]:
+    if browser_name is not BrowserType.CHROME:
+        msg = (
+            "Only current Chrome has a verified automatic browser trust path. "
+            "Firefox and Safari are blocked before application navigation."
+        )
+        raise BrowserSecurityError(msg)
+    _browser_security.require_safe_arguments(arguments)
     try:
-        # TODO(ThatXliner): Import directly from selenium.webdriver
-        options = importlib.import_module(
-            ".options",
-            f"selenium.webdriver.{browser_name.value['name'].lower()}",
-        ).Options()
+        options = drivers.ChromeOptions()
+        options.set_capability("acceptInsecureCerts", False)
+        options.add_experimental_option(
+            "prefs",
+            {_browser_security.PLATFORM_TRUST_PREF: False},
+        )
         if headless:
-            try:
-                browser_name.value["make_headless"](options)
-            except TypeError:
-                return None
+            options.add_argument("--headless")
         if arguments:
             for arg in arguments:
                 options.add_argument(arg)
-        service_arguments = {"log_path": os.devnull}
-        if browser_name is not BrowserType.SAFARI:
+        explicit_browser = os.environ.get("SE_CHROME_PATH", "")
+        if explicit_browser:
+            paths = _driver_manager.driver_paths("chrome", explicit_browser)
+        else:
             paths = _driver_manager.driver_paths(
-                browser_name.value["name"].lower(), options.binary_location
+                "chrome",
+                browser_version=_browser_security.PINNED_CHROME_VERSION,
+                force_browser_download=True,
             )
-            service_arguments["executable_path"] = paths["driver_path"]
-            if paths.get("browser_path"):
-                options.binary_location = paths["browser_path"]
-        service = importlib.import_module(
-            ".service",
-            f"selenium.webdriver.{browser_name.value['name'].lower()}",
-        ).Service(**service_arguments)
+        if paths.get("browser_path"):
+            options.binary_location = paths["browser_path"]
+        service = drivers.ChromeService(
+            executable_path=paths["driver_path"],
+            log_output=os.devnull,
+        )
         browser = functools.partial(
-            getattr(drivers, browser_name.value["name"]),
+            _start_verified_browser,
             options=options,
             service=service,
         )
         # There is no better way to check validity
         # than to open and close it...
-        browser().close()
-    except browser_exceptions.WebDriverException:
-        return None
+        browser().quit()
+    except BrowserSecurityError:
+        raise
+    except browser_exceptions.WebDriverException as error:
+        msg = (
+            "Could not resolve or start the pinned secure Chrome runtime. "
+            "The platform or browser download may be unsupported."
+        )
+        raise BrowserSecurityError(msg) from error
     else:
         return browser
 
 
 def get_browser(
-    priority: Tuple[BrowserType, ...] = (
-        BrowserType.CHROME,
-        BrowserType.FIREFOX,
-        BrowserType.SAFARI,
-    ),
+    priority: Tuple[BrowserType, ...] = (BrowserType.CHROME,),
     headless: bool = True,
     arguments: Optional[Sequence[str]] = None,
-) -> RawWebDriver:
-    """Lil' helper function that attempts to get a valid WebDriver."""
+) -> Callable[[], RawWebDriver]:
+    """Return a factory that checks browser certificate trust before navigation.
+
+    Requires Chrome 158.0.8115.0 or later with updated root data. Set
+    SE_CHROME_PATH to select an official current browser executable.
+    """
     _cache_key = (
         tuple(enum.name for enum in priority),
         headless,
@@ -308,27 +349,30 @@ class BrowserContext:
 @internal.add_typo_safety
 @dataclass
 class Browser(contextlib.AbstractContextManager):
-    """>>> with Browser("https://google.com"): pass
-    >>> with Browser(
-    ...     "https://google.com",
-    ...     get_driver=get_browser(priority=(BrowserType.FIREFOX,)),
-    ... ):
-    ...     pass
-    >>> from selenium import webdriver
-    >>> from selenium.webdriver.firefox.options import Options
-    >>> with Browser(
-    ...     "https://google.com",
-    ...     get_driver=lambda: webdriver.Firefox(options=Options),
-    ... ):
-    ...     pass
-    >>> with Browser("https://google.com", get_driver=webdriver.Ie): pass.
+    """Open a page after the automatic browser's certificate checks pass.
+
+    Custom get_driver callables require allow_unverified_driver=True, which
+    explicitly bypasses Data49's browser certificate safeguards.
+
+    >>> with Browser("https://example.com"): pass
     """
 
     url: str
     get_driver: Callable[[], RawWebDriver] = field(default_factory=get_browser)
+    allow_unverified_driver: bool = False
 
     def open(self) -> BrowserContext:  # noqa: A003
         """Start the browser."""
+        if not self.allow_unverified_driver and not (
+            isinstance(self.get_driver, functools.partial)
+            and self.get_driver.func is _start_verified_browser
+        ):
+            msg = (
+                "A custom unverified get_driver bypasses Data49's browser security "
+                "checks. Use get_browser(), or explicitly accept responsibility "
+                "with allow_unverified_driver=True."
+            )
+            raise BrowserSecurityError(msg)
         self.driver = (
             self.get_driver()
         )  # TODO(ThatXliner): Don't make Browsers one-time
@@ -347,7 +391,7 @@ class Browser(contextlib.AbstractContextManager):
 
     def close(self) -> None:
         """Close the browser."""
-        self.driver.close()
+        self.driver.quit()
 
     def __enter__(self) -> BrowserContext:
         return self.open()

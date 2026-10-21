@@ -1,0 +1,82 @@
+{
+  "status": "passed",
+  "results": [
+    {
+      "name": "primary",
+      "url": "https://emudhra.we-have-a-problem.com/",
+      "outcome": "ACCEPTED",
+      "passed": true,
+      "certificate_error_codes": [],
+      "certificate_interstitial": false,
+      "navigation_error": "",
+      "network_errors": [],
+      "document_response_statuses": [
+        200
+      ],
+      "title": "eMudhra Intermediate CA Compromise"
+    },
+    {
+      "name": "direct",
+      "url": "https://dv-g3b-emudhra.we-have-a-problem.com/",
+      "outcome": "CERTIFICATE_REJECTED",
+      "passed": true,
+      "certificate_error_codes": [
+        "net::ERR_CERT_AUTHORITY_INVALID"
+      ],
+      "certificate_interstitial": true,
+      "navigation_error": "",
+      "network_errors": [
+        "net::ERR_CERT_AUTHORITY_INVALID"
+      ],
+      "document_response_statuses": [],
+      "title": "Privacy error"
+    },
+    {
+      "name": "aaa",
+      "url": "https://dv-g3b-aaa-emudhra.we-have-a-problem.com/",
+      "outcome": "CERTIFICATE_REJECTED",
+      "passed": true,
+      "certificate_error_codes": [
+        "net::ERR_CERT_AUTHORITY_INVALID"
+      ],
+      "certificate_interstitial": true,
+      "navigation_error": "",
+      "network_errors": [
+        "net::ERR_CERT_AUTHORITY_INVALID"
+      ],
+      "document_response_statuses": [],
+      "title": "Privacy error"
+    },
+    {
+      "name": "control",
+      "url": "https://example.com/",
+      "outcome": "ACCEPTED",
+      "passed": true,
+      "certificate_error_codes": [],
+      "certificate_interstitial": false,
+      "navigation_error": "",
+      "network_errors": [],
+      "document_response_statuses": [
+        200
+      ],
+      "title": "Example Domain"
+    }
+  ],
+  "passed": true,
+  "fresh_manager_cache": true,
+  "browser_version": "158.0.8115.0",
+  "accept_insecure_certs": false,
+  "effective_trust_metadata": {
+    "metadata": {
+      "includeSystemTrustStore": false,
+      "isIncludeSystemTrustStoreManaged": false,
+      "numPolicyCerts": 0,
+      "numUserAddedSystemCerts": 6,
+      "numUserCerts": 0,
+      "showUserCertsUi": true
+    }
+  },
+  "runtime": "Official automatically resolved Chrome for Testing158.0.8115.0, macOS ARM64",
+  "root_store_version": 43,
+  "verified_at": "2026-10-21T14:51:54.627064+00:00"
+}

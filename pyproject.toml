@@ -2,7 +2,7 @@
 name = "data49"
 description = "A gold rush-themed data mining library"
 authors = ["Bryan Hu <thatxliner@gmail.com>"]
-version = "0.5.1"
+version = "0.5.2"
 include = [
     {path = "data49/_selenium", format = ["sdist", "wheel"]},
     {path = "vendor/selenium-manager", format = ["sdist", "wheel"]},

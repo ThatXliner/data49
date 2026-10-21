@@ -81,7 +81,7 @@ def test_browser_uses_explicit_verified_driver(monkeypatch):
     monkeypatch.setattr(
         _driver_manager,
         "driver_paths",
-        lambda *args: {
+        lambda *args, **kwargs: {
             "driver_path": "/trusted/chromedriver",
             "browser_path": "/trusted/chrome",
         },
@@ -89,10 +89,51 @@ def test_browser_uses_explicit_verified_driver(monkeypatch):
 
     def chrome(**kwargs):
         calls.append(kwargs)
-        return type("Browser", (), {"close": lambda self: None})()
+        return type("Browser", (), {"quit": lambda self: None})()
 
     monkeypatch.setattr(web.drivers, "Chrome", chrome)
+    monkeypatch.setattr(
+        web._browser_security, "require_safe_chrome", lambda browser: None
+    )
     factory = web._try_to_get(web.BrowserType.CHROME, True, None)
     assert factory is not None
     assert calls[0]["service"].path == "/trusted/chromedriver"
     assert calls[0]["options"].binary_location == "/trusted/chrome"
+
+
+def test_pinned_browser_download_uses_verified_manager_and_ca_bundle(monkeypatch):
+    observed = {}
+    monkeypatch.setattr(
+        _driver_manager, "_manager_binary", lambda: Path("verified-manager")
+    )
+
+    def run(args, **kwargs):
+        observed.update(args=args, **kwargs)
+        return type(
+            "Result",
+            (),
+            {
+                "returncode": 0,
+                "stdout": json.dumps(
+                    {
+                        "result": {
+                            "driver_path": "/trusted/chromedriver",
+                            "browser_path": "/trusted/pinned-chrome",
+                        }
+                    }
+                ),
+            },
+        )()
+
+    monkeypatch.setattr(_driver_manager.subprocess, "run", run)
+    paths = _driver_manager.driver_paths(
+        "chrome", browser_version="158.0.8115.0", force_browser_download=True
+    )
+    assert paths["browser_path"] == "/trusted/pinned-chrome"
+    assert (
+        observed["args"][observed["args"].index("--browser-version") + 1]
+        == "158.0.8115.0"
+    )
+    assert "--force-browser-download" in observed["args"]
+    assert "--browser-path" not in observed["args"]
+    assert observed["env"]["SSL_CERT_FILE"] == certifi.where()
