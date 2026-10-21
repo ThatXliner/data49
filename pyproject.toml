@@ -2,7 +2,11 @@
 name = "data49"
 description = "A gold rush-themed data mining library"
 authors = ["Bryan Hu <thatxliner@gmail.com>"]
-version = "0.5.0"
+version = "0.5.1"
+include = [
+    {path = "data49/_selenium", format = ["sdist", "wheel"]},
+    {path = "vendor/selenium-manager", format = ["sdist", "wheel"]},
+]
 
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -28,7 +32,7 @@ beautifulsoup4 = "^4.12.2"
 requests = "^2.34.2"
 urllib3 = "^2.8.0"
 h11 = ">=0.16.0"
-selenium = "^4.10.0"
+selenium = "^4.51.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"

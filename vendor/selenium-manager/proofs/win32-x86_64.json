@@ -1,0 +1,53 @@
+{
+  "binary": "D:\\a\\data49\\data49\\selenium-source\\rust\\target\\release\\selenium-manager.exe",
+  "certifi": "2026.10.19",
+  "ca_bundle": "C:\\hostedtoolcache\\windows\\Python\\3.13.16\\x64\\Lib\\site-packages\\certifi\\cacert.pem",
+  "results": [
+    {
+      "name": "direct",
+      "url": "https://dv-g3b-emudhra.we-have-a-problem.com/",
+      "expected_certificate_rejection": true,
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "returncode": 65,
+          "certificate_error": true,
+          "response_obtained": false,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "name": "cross_signed",
+      "url": "https://dv-g3b-aaa-emudhra.we-have-a-problem.com/",
+      "expected_certificate_rejection": true,
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "returncode": 65,
+          "certificate_error": true,
+          "response_obtained": false,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "name": "control",
+      "url": "https://example.com/",
+      "expected_certificate_rejection": false,
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "returncode": 65,
+          "certificate_error": false,
+          "response_obtained": true,
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "passed": true
+}

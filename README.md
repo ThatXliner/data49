@@ -38,16 +38,16 @@ This library's name was inspired from the 18**49** gold rush. In the modern worl
 
 ## Installation
 
-You can get this project via `pip`
+The patched 0.5.1 wheel is distributed on [GitHub Releases](https://github.com/ThatXliner/data49/releases/tag/v0.5.1). PyPI publication requires refreshed publishing credentials, so install this security release directly:
 
 ```bash
-$ pip install data49
+$ pip install https://github.com/ThatXliner/data49/releases/download/v0.5.1/data49-0.5.1-py3-none-any.whl
 ```
 
 Or, if you're using [Poetry](https://python-poetry.org)
 
 ```bash
-$ poetry add data49
+$ poetry add https://github.com/ThatXliner/data49/releases/download/v0.5.1/data49-0.5.1-py3-none-any.whl
 ```
 
 ## License
@@ -63,3 +63,25 @@ If you are a company using this project and want an exception, email me at [that
 ## Python support
 
 Version 0.5.0 requires Python 3.10 or later. This release upgrades Requests and urllib3 to patched releases whose supported Python versions start at 3.10.
+
+## Secure browser driver downloads
+
+Version 0.5.1 supplies a certificate-verifying Selenium Manager for automatic Chrome and Firefox driver downloads. It trusts the installed certifi bundle and uses a fresh cache at `~/.cache/data49/selenium-verified-20261021`. It supplies Selenium an explicit driver path, so Selenium's bundled downloader is bypassed. The bundled helper source patch, licenses, build instructions and checksums are under `vendor/selenium-manager`.
+
+If your platform has no verified helper, automatic management raises an error. You can use a trusted local driver explicitly:
+
+```python
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from data49.web import Browser
+
+with Browser(
+    "https://example.com",
+    get_driver=lambda: webdriver.Chrome(
+        service=Service(executable_path="/path/to/trusted/chromedriver")
+    ),
+):
+    pass
+```
+
+A custom `get_driver` is responsible for its own driver and browser trust configuration. Safari uses its system-provided driver.
