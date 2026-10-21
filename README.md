@@ -59,3 +59,7 @@ This project is licensed under the [GNU GPL v3+](https://github.com/ThatXliner/d
 In short, this means you can do anything with it (distribute, modify, sell) but if you were to publish your changes, you must make the source code and build instructions readily available.
 
 If you are a company using this project and want an exception, email me at [thatxliner@gmail.com](mailto:thatxliner@gmail.com) and we can discuss.
+
+## Python support
+
+Version 0.5.0 requires Python 3.10 or later. This release upgrades Requests and urllib3 to patched releases whose supported Python versions start at 3.10.
