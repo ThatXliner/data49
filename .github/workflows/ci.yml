@@ -48,11 +48,21 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install
           poetry install  # Second time to install the project
-      - name: Use the supported Linux setuid sandbox
+      - name: Permit sandbox namespaces for isolated Linux CFT paths
         if: runner.os == 'Linux'
         run: |
-          test -u /opt/google/chrome/chrome-sandbox
-          echo "CHROME_DEVEL_SANDBOX=/opt/google/chrome/chrome-sandbox" >> "$GITHUB_ENV"
+          python3 - <<'PY' > "$RUNNER_TEMP/data49-cft.apparmor"
+          from pathlib import Path
+          import tempfile
+          print('abi <abi/4.0>,\ninclude <tunables/global>')
+          paths = {
+              "data49-cft-cache": str(Path.home() / ".cache/data49/selenium-verified-20261021/chrome/linux64/158.0.8115.0/chrome"),
+              "data49-cft-proof": str(Path(tempfile.gettempdir()) / "data49-browser-proof-cache-*/chrome/linux64/158.0.8115.0/chrome"),
+          }
+          for name, path in paths.items():
+              print(f'profile {name} "{path}" flags=(unconfined) {{\n  userns,\n}}')
+          PY
+          sudo apparmor_parser -r "$RUNNER_TEMP/data49-cft.apparmor"
       - name: Run test suite
         run: poe ci
       - name: Verify actual browser certificate rejection

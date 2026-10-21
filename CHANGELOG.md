@@ -6,6 +6,7 @@
 - Enforce `acceptInsecureCerts=False`, disable platform-added trust in each temporary profile, and require empty enterprise and profile trust additions. Check that the Chrome Root Store omits the four affected roots before returning each driver. Missing, malformed, or overridden settings fail closed. Firefox, Safari, custom profiles, and unverified command-line switches are blocked on the automatic path.
 - Require `allow_unverified_driver=True` to opt out of those checks with a custom `get_driver`. Reuse the verified Selenium Manager binaries and certifi floor from 0.5.1. Extend the private resolver's arguments to request the exact browser version without selecting an older system browser.
 - Add a reproducible browser TLS probe that requires certificate-error interstitials for both compromised chains and a successful trusted control. DNS and navigation timeouts remain inconclusive.
+- Repair existing CI type and style checks. Sequential `Sluice` pipelines now execute tuple groups in order and preserve chained values instead of raising `TypeError`.
 
 ## 0.5.1
 

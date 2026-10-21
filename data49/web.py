@@ -2,8 +2,9 @@ import contextlib
 import enum
 import functools
 import os
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Literal
 
 import selenium.common.exceptions as browser_exceptions
 from bs4 import BeautifulSoup
@@ -55,9 +56,9 @@ class BrowserType(enum.Enum):
     }
 
 
-__get_browser_cache: Dict[
-    Tuple[Tuple[str, ...], bool, Optional[Tuple[str, ...]]],
-    Optional[Callable[[], RawWebDriver]],
+__get_browser_cache: dict[
+    tuple[tuple[str, ...], bool, tuple[str, ...] | None],
+    Callable[[], RawWebDriver] | None,
 ] = {}
 
 
@@ -89,8 +90,8 @@ def _start_verified_browser(*, options, service):
 def _try_to_get(
     browser_name: BrowserType,
     headless: bool,
-    arguments: Optional[Sequence[str]],
-) -> Optional[Callable[[], RawWebDriver]]:
+    arguments: Sequence[str] | None,
+) -> Callable[[], RawWebDriver] | None:
     if browser_name is not BrowserType.CHROME:
         msg = (
             "Only current Chrome has a verified automatic browser trust path. "
@@ -146,9 +147,9 @@ def _try_to_get(
 
 
 def get_browser(
-    priority: Tuple[BrowserType, ...] = (BrowserType.CHROME,),
+    priority: tuple[BrowserType, ...] = (BrowserType.CHROME,),
     headless: bool = True,
-    arguments: Optional[Sequence[str]] = None,
+    arguments: Sequence[str] | None = None,
 ) -> Callable[[], RawWebDriver]:
     """Return a factory that checks browser certificate trust before navigation.
 
@@ -199,7 +200,7 @@ class Element:
 
     # get_attribute documentation says it may return booleans...
     # @functools.lru_cache()
-    def get(self, attr: str) -> Optional[str]:
+    def get(self, attr: str) -> str | None:
         """Get the IDL attribute of this element (e.g. `innerHTML`, `value`)."""
         return self.webelement.get_attribute(attr)
 
@@ -228,7 +229,7 @@ class Element:
 class BrowserContext:
     url: str
     driver: RawWebDriver
-    _waits: Dict[float, WebDriverWait] = field(default_factory=dict)
+    _waits: dict[float, WebDriverWait] = field(default_factory=dict)
 
     def go(self, to: str) -> None:
         """Change the current URL to `to`."""
@@ -290,7 +291,7 @@ class BrowserContext:
             wait_up_to,
         )
 
-    def query_selector_all(self, css_selector: str) -> List[Element]:
+    def query_selector_all(self, css_selector: str) -> list[Element]:
         """:meth:`query_selector` for multiple elements."""
         return list(
             map(Element, self.driver.find_elements(By.CSS_SELECTOR, css_selector)),
@@ -311,7 +312,7 @@ class BrowserContext:
 
     def wait(
         self,
-        until: Callable[[RawWebDriver], Union[webelement.WebElement, bool]],
+        until: Callable[[RawWebDriver], webelement.WebElement | Literal[False]],
         up_to: float = 10.0,
     ) -> Element:
         """Wait until an element is located.
