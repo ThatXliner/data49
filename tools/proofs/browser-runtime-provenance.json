@@ -1,0 +1,22 @@
+{
+  "chrome_for_testing": {
+    "version": "158.0.8115.0",
+    "metadata": "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json",
+    "archive": "https://storage.googleapis.com/chrome-for-testing-public/158.0.8115.0/mac-arm64/chrome-mac-arm64.zip",
+    "archive_sha256": "4bab3b7587693298e6058cef8184bff990d51037acbab82668ef7e30ac6c3bc5",
+    "download_verification": "TLS verified with certifi2026.10.19; default and fresh-cache proof use bundled verified Selenium Manager",
+    "macos_signature": "Ad-hoc signature; no Google notarization claim for CfT"
+  },
+  "signed_chrome_canary": {
+    "version": "158.0.8115.0",
+    "archive": "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg",
+    "archive_sha256": "7d3a88eee17f53eec0b0013c9ff5fda290bbde1f00da7779ae823adc7a817e28",
+    "signature": "Google LLC EQHXZ8M8AV; codesign --verify --deep --strict passed; spctl accepted Notarized Developer ID",
+    "actual_browser_result": "Both compromised hosts certificate-error interstitial; primary andexample.com loaded; acceptInsecureCerts=false"
+  },
+  "root_store": {
+    "version": 43,
+    "source": "https://raw.githubusercontent.com/chromium/chromium/ac0dfd52813091cb4826afd72ddc00f94eefa361/net/data/ssl/chrome_root_store/root_store.textproto",
+    "netlog": "Both officialCfT and signedCanary showed active Chrome Root Store43 andCRLSet0; distrust does not depend on live CRLSet bootstrap."
+  }
+}

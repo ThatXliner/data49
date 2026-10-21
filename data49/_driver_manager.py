@@ -6,7 +6,6 @@ import platform
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict
 
 import certifi
 from selenium.common.exceptions import WebDriverException
@@ -25,15 +24,25 @@ def _manager_binary() -> Path:
         "selenium-manager.exe" if sys.platform == "win32" else "selenium-manager"
     )
     if not binary.is_file():
-        raise RuntimeError(
+        msg = (
             "Data49 has no verified Selenium Manager for "
-            f"{sys.platform}/{architecture}. Supply Browser(get_driver=...) with an "
-            "explicit Selenium Service(executable_path=...) for a trusted local driver."
+            f"{sys.platform}/{architecture}. "
+            "A manual Browser(get_driver=...) requires an explicit trusted Service "
+            "and allow_unverified_driver=True to bypass automatic browser checks."
+        )
+        raise RuntimeError(
+            msg,
         )
     return binary
 
 
-def driver_paths(browser: str, browser_path: str = "") -> Dict[str, str]:
+def driver_paths(
+    browser: str,
+    browser_path: str = "",
+    *,
+    browser_version: str = "",
+    force_browser_download: bool = False,
+) -> dict[str, str]:
     """Find/download a driver without running Selenium's unverified downloader."""
     args = [
         str(_manager_binary()),
@@ -49,20 +58,29 @@ def driver_paths(browser: str, browser_path: str = "") -> Dict[str, str]:
     ]
     if browser_path:
         args += ["--browser-path", browser_path]
+    if browser_version:
+        args += ["--browser-version", browser_version]
+    if force_browser_download:
+        args.append("--force-browser-download")
     environment = os.environ.copy()
     environment["SSL_CERT_FILE"] = certifi.where()
     completed = subprocess.run(
-        args, capture_output=True, text=True, env=environment, check=False
+        args,  # noqa: S603 - packaged verified helper, argv without a shell
+        capture_output=True,
+        text=True,
+        env=environment,
+        check=False,
     )
     try:
         output = json.loads(completed.stdout)
         result = output["result"]
     except (ValueError, KeyError, TypeError) as error:
+        msg = "Verified Selenium Manager returned an invalid response"
         raise WebDriverException(
-            "Verified Selenium Manager returned an invalid response"
+            msg,
         ) from error
     if completed.returncode or not result.get("driver_path"):
         raise WebDriverException(
-            result.get("message", "Verified driver discovery failed")
+            result.get("message", "Verified driver discovery failed"),
         )
     return result

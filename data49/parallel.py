@@ -4,14 +4,16 @@
 
 import concurrent.futures
 import functools
+import itertools
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, List, Tuple, Union
+from typing import Any
 
 import attr
 
 from . import internal
 
-__all__: List[str] = ["Bundle", "Sluice", "Pipeline"]
+__all__: list[str] = ["Bundle", "Sluice", "Pipeline"]
 
 
 @attr.s(auto_attribs=True)
@@ -79,7 +81,7 @@ class Sluice:
 
     """
 
-    pipeline: Iterable[Union[Callable, Tuple[Callable]]]
+    pipeline: Iterable[Callable | tuple[Callable, ...]]
     concurrent: bool = False
     chain: bool = False
 
@@ -104,7 +106,10 @@ class Sluice:
                     else:
                         executor.submit(item)
             return None
-        return Bundle(self.pipeline, chain=self.chain)()
+        functions = itertools.chain.from_iterable(
+            item if isinstance(item, tuple) else (item,) for item in self.pipeline
+        )
+        return Bundle(functions, chain=self.chain)()
 
 
 Pipeline = functools.partial(Bundle, chain=True)

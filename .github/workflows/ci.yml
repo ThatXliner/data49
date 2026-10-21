@@ -6,10 +6,14 @@ on:
   push:
   pull_request:
 env:
-  POETRY_VERSION: 1.5.1
+  POETRY_VERSION: 1.8.5
 jobs:
   test:
+    env:
+      DATA49_LIVE_BROWSER_TESTS: "1"
     strategy:
+      max-parallel: 2
+      fail-fast: false
       matrix:
         python-version:
           - "3.10"
@@ -23,15 +27,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: actions/cache@v3
-        with:
-          path: |
-            .venv
-            .pytest_cache
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       - name: Install Poetry and Poe (UNIX)
         if: runner.os != 'Windows'
         run: python3 -m pip install poetry==$POETRY_VERSION poethepoet
@@ -44,10 +39,43 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install
           poetry install  # Second time to install the project
-      - name: Install ChromeDriver
-        uses: nanasess/setup-chromedriver@v2
+      - name: Permit sandbox namespaces for isolated Linux CFT paths
+        if: runner.os == 'Linux'
+        run: |
+          python3 - <<'PY' > "$RUNNER_TEMP/data49-cft.apparmor"
+          from pathlib import Path
+          import tempfile
+          print('abi <abi/4.0>,\ninclude <tunables/global>')
+          paths = {
+              "data49-cft-cache": str(Path.home() / ".cache/data49/selenium-verified-20261021/chrome/linux64/158.0.8115.0/chrome"),
+              "data49-cft-proof": str(Path(tempfile.gettempdir()) / "data49-browser-proof-cache-*/chrome/linux64/158.0.8115.0/chrome"),
+          }
+          for name, path in paths.items():
+              print(f'profile {name} "{path}" flags=(unconfined) {{\n  userns,\n}}')
+          PY
+          sudo apparmor_parser -r "$RUNNER_TEMP/data49-cft.apparmor"
       - name: Run test suite
         run: poe ci
+      - name: Verify actual browser certificate rejection
+        if: matrix.python-version == '3.10'
+        run: poetry run python tools/verify_browser_tls.py --fresh-cache --output browser-tls.json
+      - name: Save browser TLS evidence
+        if: always() && matrix.python-version == '3.10'
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-tls-${{ runner.os }}
+          path: browser-tls*
+      - name: Diagnose Linux browser startup failure
+        if: failure() && runner.os == 'Linux'
+        run: |
+          poetry run python - <<'PY'
+          import subprocess, tempfile
+          from data49 import _driver_manager, _browser_security
+          paths = _driver_manager.driver_paths("chrome", browser_version=_browser_security.PINNED_CHROME_VERSION, force_browser_download=True)
+          result = subprocess.run([paths["browser_path"], "--headless", "--no-first-run", "--user-data-dir=" + tempfile.mkdtemp(prefix="data49-startup-diagnostic-"), "--dump-dom", "about:blank"], capture_output=True, text=True, timeout=25)
+          print("Chrome startup exit:", result.returncode)
+          print(result.stderr)
+          PY
       - name: Upload to CodeCov
         uses: codecov/codecov-action@v2
   docs:
@@ -57,14 +85,7 @@ jobs:
         uses: actions/checkout@v2
       - uses: actions/setup-python@v4
         with:
-          python-version: 3
-      - uses: actions/cache@v3
-        with:
-          path: .venv
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
+          python-version: "3.10"
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip poetry==$POETRY_VERSION poethepoet
@@ -81,7 +102,7 @@ jobs:
         uses: actions/checkout@v2
       - uses: actions/setup-python@v4
         with:
-          python-version: 3
+          python-version: "3.10"
       - name: Install Poetry $POETRY_VERSION
         run: python3 -m pip install --upgrade pip poetry==$POETRY_VERSION
       - name: Build project
@@ -94,14 +115,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3
-      - uses: actions/cache@v3
-        with:
-          path: .venv
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
+          python-version: "3.10"
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip poetry==$POETRY_VERSION poethepoet
