@@ -70,7 +70,7 @@ Version 0.5.1 supplies a certificate-verifying Selenium Manager for automatic Ch
 
 ## Browser certificate validation
 
-Version 0.5.2 also checks the browser that opens web pages. By default, Data49 downloads and caches the official Chrome for Testing 158.0.8115.0 build through its certificate-verifying Manager. This is currently a prerelease build with the updated Chrome Root Store. Data49 uses that isolated runtime instead of your installed system browser and does not redistribute Google browser binaries in its package. Stable Chrome 156 and a fresh Firefox 158.0.1 profile did not satisfy the browser TLS sweep.
+Version 0.5.2 also checks the browser that opens web pages. By default, Data49 downloads and caches the official Chrome for Testing 158.0.8115.0 build through its certificate-verifying Manager. This is currently a prerelease build with the updated Chrome Root Store. Data49 uses that isolated runtime instead of your installed system browser and does not redistribute Google browser binaries in its package.
 
 To select your own current browser, download an official build from [Google Chrome Canary](https://www.google.com/chrome/canary/) or the [Chrome for Testing dashboard](https://googlechromelabs.github.io/chrome-for-testing/). It must be version 158.0.8115.0 or later and pass the same trust checks. Set `SE_CHROME_PATH` to the actual executable. For example, on macOS:
 
@@ -87,19 +87,11 @@ with Browser("https://example.com") as page:
     print(page.driver.title)
 ```
 
-Every returned driver must report `acceptInsecureCerts=False`. Data49 disables platform-added trust in Chrome's fresh temporary profile, then confirms that setting through the browser's own certificate manager. Enterprise and profile certificate additions must be absent, and the Chrome Root Store must omit the four affected roots. Missing, malformed, or overridden configuration fails closed with `BrowserSecurityError` before your application URL opens. This check uses internal browser pages and does not contact the sweep test hosts. Data49 does not modify your main browser profile or system trust settings. Applications that need additional private trust anchors must use the explicit custom-driver bypass below.
+Every returned driver must report `acceptInsecureCerts=False`. Data49 disables platform-added trust in Chrome's fresh temporary profile, then confirms that setting through the browser's own certificate manager. Enterprise and profile certificate additions must be absent, and the Chrome Root Store must omit the four affected roots. Missing, malformed, or overridden configuration fails closed with `BrowserSecurityError` before your application URL opens. This check uses internal browser pages only. Data49 does not modify your main browser profile or system trust settings. Applications that need additional private trust anchors must use the explicit custom-driver bypass below.
 
-The automatic path currently supports Chrome only. The verified Manager supports macOS ARM64 and x86-64, Linux ARM64 and x86-64, and Windows x86-64. Browser behavior was exercised on macOS ARM64; CI runs the same browser probe on its desktop runner platforms. A missing helper, older browser, unsupported engine, or unavailable certificate interface fails closed. Only window size, language, headless mode, and `--start-maximized` are accepted as additional browser arguments.
+The automatic path currently supports Chrome only. The verified Manager supports macOS ARM64 and x86-64, Linux ARM64 and x86-64, and Windows x86-64. CI runs the live browser tests on Linux, macOS and Windows. A missing helper, older browser, unsupported engine, or unavailable certificate interface fails closed. Only window size, language, headless mode, and `--start-maximized` are accepted as additional browser arguments.
 
 On Linux, Chrome for Testing also requires a working browser sandbox. Ubuntu's AppArmor rules can prevent a downloaded browser from creating user namespaces. Follow [Chromium's supported sandbox setup](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md), which includes using an installed Chrome setuid sandbox through `CHROME_DEVEL_SANDBOX`. Data49 does not disable the sandbox.
-
-To reproduce the certificate checks against both compromised chains and example.com:
-
-```sh
-python tools/verify_browser_tls.py --fresh-cache --output browser-tls.json
-```
-
-The probe saves screenshots and an incremental JSON report. `--fresh-cache` downloads into a new test-only Manager cache and requires `SE_CHROME_PATH` to be unset, so the normal automatic runtime path is exercised. Omit that option to test an explicit browser. Both bad hosts must show certificate-error interstitials. DNS failures and navigation timeouts are inconclusive and cause the probe to fail.
 
 ### Custom drivers bypass browser safeguards
 
