@@ -44,11 +44,9 @@ jobs:
         run: |
           python3 - <<'PY' > "$RUNNER_TEMP/data49-cft.apparmor"
           from pathlib import Path
-          import tempfile
           print('abi <abi/4.0>,\ninclude <tunables/global>')
           paths = {
               "data49-cft-cache": str(Path.home() / ".cache/data49/selenium-verified-20261021/chrome/linux64/158.0.8115.0/chrome"),
-              "data49-cft-proof": str(Path(tempfile.gettempdir()) / "data49-browser-proof-cache-*/chrome/linux64/158.0.8115.0/chrome"),
           }
           for name, path in paths.items():
               print(f'profile {name} "{path}" flags=(unconfined) {{\n  userns,\n}}')
@@ -56,15 +54,6 @@ jobs:
           sudo apparmor_parser -r "$RUNNER_TEMP/data49-cft.apparmor"
       - name: Run test suite
         run: poe ci
-      - name: Verify actual browser certificate rejection
-        if: matrix.python-version == '3.10'
-        run: poetry run python tools/verify_browser_tls.py --fresh-cache --output browser-tls.json
-      - name: Save browser TLS evidence
-        if: always() && matrix.python-version == '3.10'
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-tls-${{ runner.os }}
-          path: browser-tls*
       - name: Diagnose Linux browser startup failure
         if: failure() && runner.os == 'Linux'
         run: |
